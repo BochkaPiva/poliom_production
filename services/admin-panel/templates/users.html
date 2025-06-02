@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+
+{% block title %}Пользователи{% endblock %}
+{% block page_title %}Управление пользователями{% endblock %}
+
+{% block content %}
+<!-- Кнопка создания пользователя -->
+<div class="row mb-3">
+    <div class="col-12">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+            <i class="bi bi-person-plus"></i>
+            Добавить пользователя
+        </button>
+    </div>
+</div>
+
+<!-- Статистика пользователей -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Всего пользователей
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ users|length }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-people fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Активных
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ users|selectattr("is_active")|list|length }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-person-check fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Заблокированных
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ users|rejectattr("is_active")|list|length }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-person-x fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Всего запросов
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ users|sum(attribute='queries_count') }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-chat-dots fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Список пользователей -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-people"></i>
+                    Список пользователей
+                </h6>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                            data-bs-toggle="dropdown">
+                        Фильтр
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/users">Все пользователи</a></li>
+                        <li><a class="dropdown-item" href="/users?filter=active">Только активные</a></li>
+                        <li><a class="dropdown-item" href="/users?filter=blocked">Только заблокированные</a></li>
+                        <li><a class="dropdown-item" href="/users?filter=recent">Недавно активные</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if users %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Telegram ID</th>
+                                    <th>Имя пользователя</th>
+                                    <th>Полное имя</th>
+                                    <th>Статус</th>
+                                    <th>Запросов</th>
+                                    <th>Последний запрос</th>
+                                    <th>Регистрация</th>
+                                    <th class="table-actions">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr class="{% if not user.is_active %}table-warning{% endif %}">
+                                    <td>{{ user.id }}</td>
+                                    <td>
+                                        <code>{{ user.telegram_id }}</code>
+                                    </td>
+                                    <td>
+                                        {% if user.username %}
+                                            @{{ user.username }}
+                                        {% else %}
+                                            <span class="text-muted">Не указан</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.first_name or user.last_name %}
+                                            {{ user.first_name or '' }} {{ user.last_name or '' }}
+                                        {% else %}
+                                            <span class="text-muted">Не указано</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.is_active %}
+                                            <span class="badge bg-success">Активен</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Заблокирован</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ user.queries_count or 0 }}</span>
+                                    </td>
+                                    <td>
+                                        {% if user.last_query_date %}
+                                            <small class="text-muted">
+                                                {{ user.last_query_date.strftime('%d.%m.%Y %H:%M') }}
+                                            </small>
+                                        {% else %}
+                                            <span class="text-muted">Нет запросов</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ user.created_at.strftime('%d.%m.%Y %H:%M') }}
+                                        </small>
+                                    </td>
+                                    <td class="table-actions">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            {% if user.is_active %}
+                                                <form method="post" action="/users/{{ user.id }}/block" 
+                                                      style="display: inline;" 
+                                                      onsubmit="return confirm('Вы уверены, что хотите заблокировать этого пользователя?')">
+                                                    <button type="submit" class="btn btn-outline-warning btn-sm" 
+                                                            title="Заблокировать пользователя">
+                                                        <i class="bi bi-person-x"></i>
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <form method="post" action="/users/{{ user.id }}/unblock" 
+                                                      style="display: inline;">
+                                                    <button type="submit" class="btn btn-outline-success btn-sm" 
+                                                            title="Разблокировать пользователя">
+                                                        <i class="bi bi-person-check"></i>
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                            
+                                            <button class="btn btn-outline-info btn-sm" 
+                                                    onclick="showUserDetails({{ user.id }}, '{{ user.username or '' }}', '{{ user.first_name or '' }}', '{{ user.last_name or '' }}', {{ user.queries_count or 0 }})" 
+                                                    title="Подробная информация">
+                                                <i class="bi bi-info-circle"></i>
+                                            </button>
+                                            
+                                            <form method="post" action="/users/{{ user.id }}/delete" 
+                                                  style="display: inline;" 
+                                                  onsubmit="return confirm('Вы уверены, что хотите удалить этого пользователя? Это действие нельзя отменить!')">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                                        title="Удалить пользователя">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-people" style="font-size: 3rem; color: #ccc;"></i>
+                        <h5 class="mt-3 text-muted">Пользователи не найдены</h5>
+                        <p class="text-muted">Пользователи появятся здесь после первого обращения к боту</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно с подробной информацией о пользователе -->
+<div class="modal fade" id="userDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подробная информация о пользователе</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Основная информация</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>ID:</strong></td>
+                                <td id="userDetailId"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Username:</strong></td>
+                                <td id="userDetailUsername"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Имя:</strong></td>
+                                <td id="userDetailName"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Запросов:</strong></td>
+                                <td id="userDetailQueries"></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Статистика активности</h6>
+                        <div id="userActivityChart">
+                            <!-- Здесь можно добавить график активности -->
+                            <p class="text-muted">График активности будет добавлен в следующих версиях</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно создания пользователя -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-plus"></i>
+                    Добавить пользователя
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/users/create">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="telegram_id" class="form-label">Telegram ID *</label>
+                        <input type="number" class="form-control" id="telegram_id" name="telegram_id" required>
+                        <div class="form-text">Уникальный идентификатор пользователя в Telegram</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Имя пользователя</label>
+                        <input type="text" class="form-control" id="username" name="username" placeholder="username">
+                        <div class="form-text">Имя пользователя в Telegram (без @)</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label">Имя</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="last_name" class="form-label">Фамилия</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Создать пользователя</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    .border-left-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    .border-left-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+    .table-warning {
+        background-color: rgba(255, 193, 7, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Функция для показа подробной информации о пользователе
+function showUserDetails(userId, username, firstName, lastName, queriesCount) {
+    document.getElementById('userDetailId').textContent = userId;
+    document.getElementById('userDetailUsername').textContent = username ? '@' + username : 'Не указан';
+    document.getElementById('userDetailName').textContent = (firstName + ' ' + lastName).trim() || 'Не указано';
+    document.getElementById('userDetailQueries').textContent = queriesCount;
+    
+    new bootstrap.Modal(document.getElementById('userDetailsModal')).show();
+}
+
+// Автообновление страницы каждые 30 секунд для актуальной статистики
+setInterval(() => {
+    // Проверяем, открыто ли модальное окно
+    const modal = document.getElementById('userDetailsModal');
+    if (!modal.classList.contains('show')) {
+        window.location.reload();
+    }
+}, 30000);
+</script>
+{% endblock %} 

@@ -1,0 +1,163 @@
+version: '3.8'
+
+services:
+  # Telegram бот POLIOM HR Assistant
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: services/telegram-bot/Dockerfile
+    container_name: poliom_telegram_bot_prod
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - GIGACHAT_API_KEY=${GIGACHAT_API_KEY}
+      - GIGACHAT_SCOPE=${GIGACHAT_SCOPE}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PYTHONPATH=/app
+      - ENVIRONMENT=production
+      - BOT_TIMEOUT=${BOT_TIMEOUT:-30}
+      - MAX_MESSAGE_LENGTH=${MAX_MESSAGE_LENGTH:-4096}
+      - CONCURRENT_REQUESTS=${CONCURRENT_REQUESTS:-10}
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-60}
+      - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-10}
+      - ADMIN_IDS=${ADMIN_IDS}
+      - SEARCH_LIMIT=${SEARCH_LIMIT:-5}
+      - SIMILARITY_THRESHOLD=${SIMILARITY_THRESHOLD:-0.7}
+      - FAQ_SEARCH_LIMIT=${FAQ_SEARCH_LIMIT:-3}
+      - FAQ_CACHE_TTL=${FAQ_CACHE_TTL:-3600}
+      - LLM_TIMEOUT=${LLM_TIMEOUT:-30}
+      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS:-2000}
+      # Кэширование моделей
+      - TRANSFORMERS_CACHE=/app/models_cache
+      - HF_HOME=/app/models_cache
+    volumes:
+      - ml_models_cache:/app/models_cache
+    restart: unless-stopped
+    depends_on:
+      - redis
+    networks:
+      - poliom_network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+
+  # Админ-панель POLIOM
+  admin-panel:
+    build:
+      context: .
+      dockerfile: services/admin-panel/Dockerfile
+    container_name: poliom_admin_panel_prod
+    ports:
+      - "${ADMIN_PANEL_PORT:-8000}:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PYTHONPATH=/app
+      - ENVIRONMENT=production
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
+      - ALLOWED_EXTENSIONS=${ALLOWED_EXTENSIONS}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      # Кэширование моделей
+      - TRANSFORMERS_CACHE=/app/models_cache
+      - HF_HOME=/app/models_cache
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+    volumes:
+      - document_uploads:/app/uploads
+      - ml_models_cache:/app/models_cache
+    restart: unless-stopped
+    depends_on:
+      - redis
+    networks:
+      - poliom_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/" || "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery worker для обработки документов POLIOM
+  celery-worker:
+    build:
+      context: .
+      dockerfile: services/admin-panel/Dockerfile
+    container_name: poliom_celery_worker_prod
+    command: sh -c "cd /app && celery -A celery_app worker --loglevel=info --concurrency=1"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PYTHONPATH=/app
+      - ENVIRONMENT=production
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
+      - ALLOWED_EXTENSIONS=${ALLOWED_EXTENSIONS}
+      # Кэширование моделей
+      - TRANSFORMERS_CACHE=/app/models_cache
+      - HF_HOME=/app/models_cache
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+    volumes:
+      - document_uploads:/app/uploads
+      - ml_models_cache:/app/models_cache
+    restart: unless-stopped
+    depends_on:
+      - redis
+    networks:
+      - poliom_network
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: '1.0'
+    healthcheck:
+      test: ["CMD", "sh", "-c", "cd /app && celery -A celery_app inspect ping"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+
+  # Redis (локальный для случая если нет managed Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: poliom_redis_prod
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - poliom_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  document_uploads:
+    driver: local
+  ml_models_cache:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  poliom_network:
+    driver: bridge 

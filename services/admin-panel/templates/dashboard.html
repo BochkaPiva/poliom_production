@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Дашборд{% endblock %}
+{% block page_title %}Дашборд{% endblock %}
+
+{% block content %}
+<!-- Статистические карточки -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Всего документов
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_documents }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-file-earmark-text fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Обработано
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ completed_documents }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Пользователей
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_users }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-people fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Администраторов
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_admins }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-shield-check fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Последние документы и запросы -->
+<div class="row">
+    <!-- Последние документы -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Последние документы</h6>
+                <a href="/documents" class="btn btn-sm btn-primary">Все документы</a>
+            </div>
+            <div class="card-body">
+                {% if recent_documents %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Название</th>
+                                    <th>Статус</th>
+                                    <th>Дата</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in recent_documents %}
+                                <tr>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 200px;">
+                                            {{ doc.title }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if doc.processing_status == 'completed' %}
+                                            <span class="badge bg-success status-badge">Готов</span>
+                                        {% elif doc.processing_status == 'processing' %}
+                                            <span class="badge bg-warning status-badge">Обработка</span>
+                                        {% elif doc.processing_status == 'pending' %}
+                                            <span class="badge bg-info status-badge">Ожидание</span>
+                                        {% elif doc.processing_status == 'failed' %}
+                                            <span class="badge bg-danger status-badge">Ошибка</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ doc.created_at.strftime('%d.%m.%Y %H:%M') }}
+                                        </small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Документы не найдены</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Последние запросы -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Последние запросы</h6>
+                <a href="/users" class="btn btn-sm btn-primary">Все пользователи</a>
+            </div>
+            <div class="card-body">
+                {% if recent_queries %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Пользователь</th>
+                                    <th>Запрос</th>
+                                    <th>Дата</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for query in recent_queries %}
+                                <tr>
+                                    <td>
+                                        <small>ID: {{ query.user_id }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 200px;">
+                                            {{ query.query_text }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ query.created_at.strftime('%d.%m.%Y %H:%M') }}
+                                        </small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Запросы не найдены</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Быстрые действия -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Быстрые действия</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="/documents" class="btn btn-outline-primary btn-block">
+                            <i class="bi bi-file-earmark-plus"></i>
+                            Загрузить документ
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="/users" class="btn btn-outline-info btn-block">
+                            <i class="bi bi-people"></i>
+                            Управление пользователями
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="/admins" class="btn btn-outline-success btn-block">
+                            <i class="bi bi-shield-plus"></i>
+                            Добавить администратора
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="/documents?status=failed" class="btn btn-outline-warning btn-block">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            Проблемные документы
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    .border-left-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    .border-left-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+    .btn-block {
+        width: 100%;
+    }
+</style>
+{% endblock %} 
